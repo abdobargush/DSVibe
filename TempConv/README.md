@@ -868,7 +868,7 @@ gcloud services enable containerregistry.googleapis.com
 
 ```bash
 # Create GKE cluster
-gcloud container clusters create temperature-converter-cluster \
+gcloud container clusters create temp-conv-cluster \
     --zone=us-central1-a \
     --num-nodes=3 \
     --machine-type=e2-medium \
@@ -877,7 +877,7 @@ gcloud container clusters create temperature-converter-cluster \
     --max-nodes=10
 
 # Get cluster credentials
-gcloud container clusters get-credentials temperature-converter-cluster --zone=us-central1-a
+gcloud container clusters get-credentials temp-conv-cluster --zone=us-central1-a
 ```
 
 ### Step 3: Configure Docker for GCR
@@ -896,28 +896,28 @@ gcloud auth configure-docker
 ```bash
 # Build backend image
 cd backend
-docker build -t gcr.io/YOUR_PROJECT_ID/temperature-backend:latest .
+docker build -t gcr.io/temp-conv-002/temperature-backend:latest .
 
 # Build envoy image
 cd ../envoy
-docker build -t gcr.io/YOUR_PROJECT_ID/temperature-envoy:latest .
+docker build -t gcr.io/temp-conv-002/temperature-envoy:latest .
 
 # Build frontend image
 cd ../frontend
-docker build -t gcr.io/YOUR_PROJECT_ID/temperature-frontend:latest .
+docker build -t gcr.io/temp-conv-002/temperature-frontend:latest .
 ```
 
 ### Push Images to GCR
 
 ```bash
 # Push backend
-docker push gcr.io/YOUR_PROJECT_ID/temperature-backend:latest
+docker push gcr.io/temp-conv-002/temperature-backend:latest
 
 # Push envoy
-docker push gcr.io/YOUR_PROJECT_ID/temperature-envoy:latest
+docker push gcr.io/temp-conv-002/temperature-envoy:latest
 
 # Push frontend
-docker push gcr.io/YOUR_PROJECT_ID/temperature-frontend:latest
+docker push gcr.io/temp-conv-002/temperature-frontend:latest
 ```
 
 ---
@@ -1037,10 +1037,10 @@ export default function () {
 
 ```bash
 # Test against local Docker Compose
-k6 run load-testing/load-test.js
+k6 run ks/load-test.js
 
 # Test against GKE (replace with your external IP)
-ENVOY_HOST=YOUR_EXTERNAL_IP:8080 k6 run load-testing/load-test.js
+ENVOY_HOST=YOUR_EXTERNAL_IP:8080 k6 run ks/load-test.js
 ```
 
 ---

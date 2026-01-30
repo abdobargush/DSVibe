@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: envoy
+  labels:
+    app: temperature-converter
+    component: envoy
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: temperature-converter
+      component: envoy
+  template:
+    metadata:
+      labels:
+        app: temperature-converter
+        component: envoy
+    spec:
+      containers:
+        - name: envoy
+          image: gcr.io/temp-conv-002/temperature-envoy:latest
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 9901
+              name: admin
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
