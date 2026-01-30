@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package temperature;
+
+option go_package = "./proto";
+
+service TemperatureConverter {
+  rpc ConvertToCelsius(TemperatureRequest) returns (TemperatureResponse);
+  rpc ConvertToFahrenheit(TemperatureRequest) returns (TemperatureResponse);
+}
+
+message TemperatureRequest {
+  double value = 1;
+}
+
+message TemperatureResponse {
+  double value = 1;
+  string unit = 2;
+}
