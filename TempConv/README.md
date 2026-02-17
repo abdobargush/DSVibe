@@ -872,6 +872,7 @@ gcloud container clusters create temp-conv-cluster \
     --zone=us-central1-a \
     --num-nodes=3 \
     --machine-type=e2-medium \
+    --disk-size=30 \
     --enable-autoscaling \
     --min-nodes=3 \
     --max-nodes=10
@@ -896,28 +897,28 @@ gcloud auth configure-docker
 ```bash
 # Build backend image
 cd backend
-docker build -t gcr.io/temp-conv-002/temperature-backend:latest .
+docker build -t gcr.io/dsvibe-487714/temperature-backend:latest .
 
 # Build envoy image
 cd ../envoy
-docker build -t gcr.io/temp-conv-002/temperature-envoy:latest .
+docker build -t gcr.io/dsvibe-487714/temperature-envoy:latest .
 
 # Build frontend image
 cd ../frontend
-docker build -t gcr.io/temp-conv-002/temperature-frontend:latest .
+docker build -t gcr.io/dsvibe-487714/temperature-frontend:latest .
 ```
 
 ### Push Images to GCR
 
 ```bash
 # Push backend
-docker push gcr.io/temp-conv-002/temperature-backend:latest
+docker push gcr.io/dsvibe-487714/temperature-backend:latest
 
 # Push envoy
-docker push gcr.io/temp-conv-002/temperature-envoy:latest
+docker push gcr.io/dsvibe-487714/temperature-envoy:latest
 
 # Push frontend
-docker push gcr.io/temp-conv-002/temperature-frontend:latest
+docker push gcr.io/dsvibe-487714/temperature-frontend:latest
 ```
 
 ---

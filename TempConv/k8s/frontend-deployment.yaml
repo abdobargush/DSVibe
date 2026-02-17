@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: gcr.io/temp-conv-002/temperature-frontend:latest
+          image: gcr.io/dsvibe-487714/temperature-frontend:latest
           ports:
             - containerPort: 80
               name: http

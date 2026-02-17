@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: envoy
-          image: gcr.io/temp-conv-002/temperature-envoy:latest
+          image: gcr.io/dsvibe-487714/temperature-envoy:latest
           ports:
             - containerPort: 8080
               name: http
