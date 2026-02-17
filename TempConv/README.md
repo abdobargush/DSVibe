@@ -157,6 +157,8 @@ import (
 
 	pb "github.com/yourusername/temperature-converter/backend/proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -195,6 +197,12 @@ func main() {
 
 	s := grpc.NewServer()
 	pb.RegisterTemperatureConverterServer(s, &server{})
+	
+	// Register health service for Kubernetes readiness probes
+	healthServer := health.NewServer()
+	grpc_health_v1.RegisterHealthServer(s, healthServer)
+	healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
+	
 	reflection.Register(s)
 
 	log.Printf("Server listening on port %s", port)
@@ -217,14 +225,20 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o server ./server/main.go
+# Build for Linux AMD64 (required for GKE)
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o server ./server/main.go
 
 FROM alpine:latest
-RUN apk --no-cache add ca-certificates
+RUN apk --no-cache add ca-certificates wget
 
 WORKDIR /root/
 
 COPY --from=builder /app/server .
+
+# Install grpc_health_probe for Kubernetes readiness probes
+RUN GRPC_HEALTH_PROBE_VERSION=v0.4.19 && \
+    wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64 && \
+    chmod +x /bin/grpc_health_probe
 
 EXPOSE 50051
 
@@ -340,15 +354,16 @@ class _ConverterPageState extends State<ConverterPage> {
 
   void _initGrpcClient() {
     // Get envoy host from environment or use default
-    final host = const String.fromEnvironment('ENVOY_HOST', defaultValue: 'localhost');
+    // When built with Docker, we pass ENVOY_HOST as a dart-define
+    const envoyHost = String.fromEnvironment('ENVOY_HOST');
+    final host = envoyHost.isNotEmpty ? envoyHost : (Uri.base.host.isEmpty ? 'localhost' : Uri.base.host);
     final port = const int.fromEnvironment('ENVOY_PORT', defaultValue: 8080);
-
-    final channel = ClientChannel(
-      host,
-      port: port,
-      options: const ChannelOptions(
-        credentials: ChannelCredentials.insecure(),
-      ),
+    
+    // For web, use http protocol
+    final envoyUrl = 'http://$host:$port';
+    
+    final channel = GrpcWebClientChannel.xhr(
+      Uri.parse(envoyUrl),
     );
 
     _client = TemperatureConverterClient(channel);
@@ -468,23 +483,20 @@ flutter build web
 Create `frontend/Dockerfile`:
 
 ```dockerfile
-FROM debian:latest AS build-env
-
-RUN apt-get update && apt-get install -y curl git unzip xz-utils zip libglu1-mesa
-RUN git clone https://github.com/flutter/flutter.git /usr/local/flutter
-
-ENV PATH="/usr/local/flutter/bin:/usr/local/flutter/bin/cache/dart-sdk/bin:${PATH}"
-
-RUN flutter doctor -v
-RUN flutter channel stable
-RUN flutter upgrade
+# Use ghcr.io/cirruslabs/flutter:stable for better compatibility
+FROM ghcr.io/cirruslabs/flutter:stable AS build-env
 
 WORKDIR /app
-COPY pubspec.* ./
+
+# Copy only pubspec.yaml to cache dependencies
+COPY pubspec.yaml ./
 RUN flutter pub get
 
 COPY . .
-RUN flutter build web --release
+
+# Build the web app with ENVOY_HOST argument
+ARG ENVOY_HOST
+RUN flutter build web --release --dart-define=ENVOY_HOST=${ENVOY_HOST}
 
 FROM nginx:alpine
 COPY --from=build-env /app/build/web /usr/share/nginx/html
@@ -769,7 +781,7 @@ metadata:
     app: temperature-converter
     component: envoy
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   ports:
     - port: 8080
       targetPort: 8080
@@ -892,33 +904,43 @@ gcloud auth configure-docker
 
 ## Phase 8: Build and Push Docker Images
 
-### Build Images
+### Build Images (Multi-Architecture)
+
+Since GKE nodes are typically Linux/AMD64, we need to build for that platform, especially if developing on Apple Silicon (M1/M2/M3).
+
+**Important:** You must deploy Backend and Envoy *before* building Frontend, as you need the Envoy External IP.
 
 ```bash
-# Build backend image
-cd backend
-docker build -t gcr.io/dsvibe-487714/temperature-backend:latest .
+# 1. Build & Push Backend
+docker build --platform linux/amd64 -t gcr.io/YOUR_PROJECT_ID/temperature-backend:latest ./backend
+docker push gcr.io/YOUR_PROJECT_ID/temperature-backend:latest
 
-# Build envoy image
-cd ../envoy
-docker build -t gcr.io/dsvibe-487714/temperature-envoy:latest .
-
-# Build frontend image
-cd ../frontend
-docker build -t gcr.io/dsvibe-487714/temperature-frontend:latest .
+# 2. Build & Push Envoy
+docker build --platform linux/amd64 -t gcr.io/YOUR_PROJECT_ID/temperature-envoy:latest ./envoy
+docker push gcr.io/YOUR_PROJECT_ID/temperature-envoy:latest
 ```
 
-### Push Images to GCR
+### Deploy Backend & Envoy First
 
 ```bash
-# Push backend
-docker push gcr.io/dsvibe-487714/temperature-backend:latest
+# Apply Backend & Envoy manifests
+kubectl apply -f k8s/backend-deployment.yaml
+kubectl apply -f k8s/backend-service.yaml
+kubectl apply -f k8s/envoy-deployment.yaml
+kubectl apply -f k8s/envoy-service.yaml
 
-# Push envoy
-docker push gcr.io/dsvibe-487714/temperature-envoy:latest
+# Wait for Envoy External IP
+kubectl get service envoy --watch
+```
 
-# Push frontend
-docker push gcr.io/dsvibe-487714/temperature-frontend:latest
+### Build & Push Frontend
+
+Once you have the `EXTERNAL-IP` for Envoy (e.g., `34.x.x.x`), build the frontend:
+
+```bash
+# Replace 34.x.x.x with your actual Envoy External IP
+docker build --build-arg ENVOY_HOST=34.x.x.x --platform linux/amd64 -t gcr.io/YOUR_PROJECT_ID/temperature-frontend:latest ./frontend
+docker push gcr.io/YOUR_PROJECT_ID/temperature-frontend:latest
 ```
 
 ---
@@ -940,10 +962,12 @@ sed -i '' 's/YOUR_PROJECT_ID/your-actual-project-id/g' k8s/*.yaml
 ### Apply Kubernetes Manifests
 
 ```bash
-# Apply all manifests
-kubectl apply -f k8s/
+# Backend and Envoy are already deployed from the previous step.
+# Now deploy the frontend:
+kubectl apply -f k8s/frontend-deployment.yaml
+kubectl apply -f k8s/frontend-service.yaml
 
-# Check deployment status
+# Check all deployments
 kubectl get deployments
 kubectl get services
 kubectl get pods

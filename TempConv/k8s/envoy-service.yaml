@@ -6,7 +6,7 @@ metadata:
     app: temperature-converter
     component: envoy
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   ports:
     - port: 8080
       targetPort: 8080

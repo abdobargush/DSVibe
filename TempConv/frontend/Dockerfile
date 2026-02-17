@@ -12,7 +12,8 @@ RUN flutter pub get
 COPY . .
 
 # Build the web app
-RUN flutter build web --release
+ARG ENVOY_HOST
+RUN flutter build web --release --dart-define=ENVOY_HOST=${ENVOY_HOST}
 
 # Use nginx to serve the built app
 FROM nginx:alpine

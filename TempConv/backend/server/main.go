@@ -10,6 +10,8 @@ import (
 	pb "TempConv/proto"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -48,6 +50,12 @@ func main() {
 
 	s := grpc.NewServer()
 	pb.RegisterTemperatureConverterServer(s, &server{})
+
+	// Register health service
+	healthServer := health.NewServer()
+	grpc_health_v1.RegisterHealthServer(s, healthServer)
+	healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
+
 	reflection.Register(s)
 
 	log.Printf("Server listening on port %s", port)

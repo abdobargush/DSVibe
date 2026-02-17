@@ -64,7 +64,8 @@ class _ConverterPageState extends State<ConverterPage> with SingleTickerProvider
   }
 
   void _initGrpcClient() {
-    final host = Uri.base.host.isEmpty ? 'localhost' : Uri.base.host;
+    const envoyHost = String.fromEnvironment('ENVOY_HOST');
+    final host = envoyHost.isNotEmpty ? envoyHost : (Uri.base.host.isEmpty ? 'localhost' : Uri.base.host);
     final envoyUrl = 'http://$host:8080';
     
     print('Connecting to Envoy at: $envoyUrl');
