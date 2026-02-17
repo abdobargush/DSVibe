@@ -1445,8 +1445,8 @@ spec:
 
 ```bash
 gcloud auth login
-gcloud projects create YOUR_PROJECT_ID --name="Poker App"
-gcloud config set project YOUR_PROJECT_ID
+gcloud projects create mexpoker --name="Poker App"
+gcloud config set project mexpoker
 
 gcloud services enable container.googleapis.com
 gcloud services enable containerregistry.googleapis.com
@@ -1459,6 +1459,7 @@ gcloud container clusters create poker-cluster \
     --zone=us-central1-a \
     --num-nodes=3 \
     --machine-type=e2-medium \
+    --disk-size=30 \
     --enable-autoscaling \
     --min-nodes=3 \
     --max-nodes=10
@@ -1477,13 +1478,13 @@ gcloud auth configure-docker
 ```bash
 # Build backend
 cd backend
-docker build -t gcr.io/YOUR_PROJECT_ID/poker-backend:latest .
-docker push gcr.io/YOUR_PROJECT_ID/poker-backend:latest
+docker build -t gcr.io/mexpoker/poker-backend:latest .
+docker push gcr.io/mexpoker/poker-backend:latest
 
 # Build frontend
 cd ../frontend
-docker build -t gcr.io/YOUR_PROJECT_ID/poker-frontend:latest .
-docker push gcr.io/YOUR_PROJECT_ID/poker-frontend:latest
+docker build -t gcr.io/mexpoker/poker-frontend:latest .
+docker push gcr.io/mexpoker/poker-frontend:latest
 ```
 
 ### Step 5: Update Kubernetes Manifests

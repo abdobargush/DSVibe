@@ -9,8 +9,9 @@ class ApiService {
       : baseUrl = url ?? _getDefaultUrl();
 
   static String _getDefaultUrl() {
-    final host = Uri.base.host.isEmpty ? 'localhost' : Uri.base.host;
-    return 'http://$host:8080';
+    // Return empty string to use relative paths (e.g. /api/evaluate)
+    // This allows Nginx to proxy requests to the backend
+    return '';
   }
 
   Future<EvaluateResponse> evaluateHand(
